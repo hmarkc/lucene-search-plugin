@@ -1,13 +1,7 @@
 package org.jenkinsci.plugins.lucene.search;
 
-import hudson.model.Result;
-import hudson.model.AbstractBuild;
-import hudson.model.AbstractProject;
-import hudson.model.Cause;
-import hudson.model.Job;
 import hudson.model.Run;
-import hudson.scm.ChangeLogSet;
-import hudson.tasks.Publisher;
+import org.apache.commons.io.output.ByteArrayOutputStream;
 
 import java.io.IOException;
 import java.util.Arrays;
@@ -15,16 +9,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import org.apache.commons.io.output.ByteArrayOutputStream;
-import org.jenkinsci.plugins.lucene.search.artifact.ArtifactIndexer;
-
 public enum Field {
-    ID("id", DefaultSearchable.FALSE, Numeric.TRUE, Persist.TRUE) {
-        @Override
-        public String getValue(Run<?, ?> build) {
-            return build.getId();
-        }
-    },
+
     PROJECT_NAME("projectname", Persist.TRUE) {
         public String getValue(final Run<?, ?> build) {
             StringBuilder builder = new StringBuilder();
@@ -36,36 +22,10 @@ public enum Field {
         }
     },
 
-    PROJECT_DISPLAY_NAME("projectdisplayname", Persist.TRUE) {
-        @Override
-        public String getValue(Run<?, ?> build) {
-            StringBuilder builder = new StringBuilder();
-            if (!build.getParent().getParent().getDisplayName().equalsIgnoreCase("jenkins")) {
-                builder.append(build.getParent().getParent().getDisplayName()).append("/");
-            }
-            builder.append(build.getParent().getDisplayName());
-            return builder.toString();
-        }
-    },
-
     BUILD_NUMBER("buildnumber", DefaultSearchable.FALSE, Numeric.TRUE, Persist.TRUE) {
         @Override
-        public Integer getValue(Run<?, ?> build) {
-            return build.getNumber();
-        }
-    },
-
-    RESULT("result", Persist.TRUE) {
-        @Override
-        public Result getValue(Run<?, ?> build) {
-            return build.getResult();
-        }
-    },
-
-    DURATION("duration", DefaultSearchable.FALSE) {
-        @Override
-        public Long getValue(Run<?, ?> build) {
-            return build.getDuration();
+        public String getValue(Run<?, ?> build) {
+            return String.valueOf(build.getNumber());
         }
     },
 
@@ -73,32 +33,6 @@ public enum Field {
         @Override
         public Long getValue(Run<?, ?> build) {
             return build.getStartTimeInMillis();
-        }
-    },
-    BUILT_ON("builton") {
-        @Override
-        public String getValue(Run<?, ?> build) {
-            if (build.getExecutor() != null) {
-                return build.getExecutor().getDisplayName();
-            } else {
-                return "null";
-            }
-        }
-    },
-    START_CAUSE("startcause") {
-        @Override
-        public String getValue(Run<?, ?> build) {
-            StringBuilder shortDescriptions = new StringBuilder();
-            for (Cause cause : build.getCauses()) {
-                shortDescriptions.append(" ").append(cause.getShortDescription());
-            }
-            return shortDescriptions.toString();
-        }
-    },
-    BALL_COLOR("color", DefaultSearchable.FALSE, Persist.TRUE) {
-        @Override
-        public String getValue(Run<?, ?> build) {
-            return build.getIconColor().name();
         }
     },
 
@@ -110,63 +44,8 @@ public enum Field {
                 build.getLogText().writeLogTo(0, byteArrayOutputStream);
                 return byteArrayOutputStream.toString();
             } catch (IOException e) {
-                // Probably won't happen, but don't silently swallow exceptions at least
-                throw new RuntimeException(e.getMessage(), e);
+                return null;
             }
-        }
-    },
-
-    CHANGE_LOG("changelog", Persist.TRUE) {
-        @Override
-        public Object getValue(Run<?, ?> run) {
-            StringBuilder sb = new StringBuilder();
-            if (run instanceof AbstractBuild) {
-                //To add support for workflow this function needs to take a Run instead of AbstractBuild. 
-                // However I can't find the equivalent functions using the abstract form so will use instance of until I find a more permanent fix 
-
-                AbstractBuild<?, ?> build = (AbstractBuild<?, ?>) run;
-
-                ChangeLogSet<? extends ChangeLogSet.Entry> changeSet = build.getChangeSet();
-
-                if (changeSet != null) {
-                    for (ChangeLogSet.Entry entry : build.getChangeSet()) {
-                        sb.append("author:").append(entry.getAuthor()).append('\n');
-                        sb.append("commitid:").append(entry.getCommitId()).append('\n');
-                        sb.append("message:").append(entry.getMsg()).append('\n');
-                        for (String path : entry.getAffectedPaths()) {
-                            sb.append(path).append('\n');
-                        }
-                    }
-                }
-            }
-            return sb.toString();
-        }
-    },
-
-    ARTIFACTS("artifacts", Persist.TRUE) {
-        @Override
-        public Object getValue(Run<?, ?> build) {
-            Job<?, ?> p = build.getParent();
-            //To add support for workflow this function needs to take a Run instead of AbstractBuild. 
-            // However I can't find the equivalent functions using the abstract form so will use instance of until I find a more permanent fix 
-
-            if (p instanceof AbstractProject && build instanceof AbstractBuild<?, ?>) {
-                AbstractProject<?, ?> proj = (AbstractProject<?, ?>) p;
-                for (Publisher publisher : proj.getPublishersList()) {
-                    if (publisher instanceof ArtifactIndexer) {
-                        ArtifactIndexer ai = (ArtifactIndexer) publisher;
-                        return ai.getIndexableData((AbstractBuild<?, ?>) build);
-                    }
-                }
-
-            }
-            return "";
-        }
-    },
-
-    URL("url", Persist.TRUE, DefaultSearchable.FALSE) {
-        @Override public Object getValue(Run<?, ?> build) {
-            return build.getParent().getParent().getUrl() + build.getParent().getSearchUrl() + build.getSearchUrl();
         }
     };
 

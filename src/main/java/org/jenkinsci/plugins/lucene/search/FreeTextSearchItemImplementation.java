@@ -15,11 +15,13 @@ public class FreeTextSearchItemImplementation extends FreeTextSearchItem {
     private final String iconFileName;
     private final String[] bestFragments;
     private final String url;
+    private final String searchName;
 
     public FreeTextSearchItemImplementation(final String projectName, final String buildNumber,
             final String[] bestFragments, final String iconFileName, final String url) {
         this.projectName = projectName;
         this.buildNumber = buildNumber;
+        this.searchName = projectName + " #" + buildNumber;
         this.url = url;
 
         this.bestFragments = new String[bestFragments.length];
@@ -36,7 +38,7 @@ public class FreeTextSearchItemImplementation extends FreeTextSearchItem {
 
     @Override
     public String getSearchName() {
-        return projectName + " #" + buildNumber;
+        return searchName;
     }
 
     public String getProjectName() {

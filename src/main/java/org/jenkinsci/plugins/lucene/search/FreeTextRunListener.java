@@ -23,7 +23,7 @@ public class FreeTextRunListener extends RunListener<Run<?, ?>> {
         try {
             searchBackendManager.storeBuild(build);
         } catch (IOException e) {
-            throw new RuntimeException(e);
+            e.printStackTrace();
         }
     }
 

@@ -1,6 +1,8 @@
 package org.jenkinsci.plugins.lucene.search.databackend;
 
 import java.util.HashSet;
+import java.util.LinkedList;
+import java.util.Queue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 
@@ -52,8 +54,9 @@ public class BurstExecutor<T> {
                 while (!workQueue.isEmpty()) {
                     try {
                         T poll = workQueue.poll(1000, TimeUnit.MILLISECONDS);
+//                        T poll = workQueue.poll();
                         if (poll != null) {
-                            LOGGER.debug("Procesing with thread " + getName());
+                            LOGGER.debug("Processing with thread " + getName());
                             worker.run(poll);
                         }
                     } catch (Exception e) {
@@ -70,6 +73,9 @@ public class BurstExecutor<T> {
     public void waitForCompletion() throws InterruptedException {
         if (!started) {
             throw new IllegalStateException("Not started yet");
+        }
+        while (!workQueue.isEmpty()) {
+            worker.run(workQueue.poll());
         }
         ensureEnoughThreadToFinishJob();
         WorkerThread workerThread;

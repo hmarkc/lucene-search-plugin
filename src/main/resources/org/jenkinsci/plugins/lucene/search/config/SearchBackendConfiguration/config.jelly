@@ -2,22 +2,8 @@
          xmlns:l="/lib/layout" xmlns:t="/lib/hudson" xmlns:f="/lib/form"
          xmlns:html="jelly:html">
     <f:section title="${%Free Text Search}">
-        <f:dropdownList name="searchBackend" field="searchBackend" title="${%Select Search Backend}">
-            <f:dropdownListBlock value="LUCENE" title="${%Lucene}"
-                                 selected="${descriptor.searchBackend.equals('LUCENE')}">
-                <f:entry title="${%Lucene directory}" field="lucenePath">
-                    <f:textbox name="lucenePath"/>
-                </f:entry>
-            </f:dropdownListBlock>
-            <f:dropdownListBlock value="SOLR" title="${%Solr}"
-                                 selected="${descriptor.searchBackend.equals('SOLR')}">
-                <f:entry title="${%Solr host url}" field="solrUrl">
-                    <f:textbox name="solrUrl"/>
-                </f:entry>
-                <f:entry title="${%Solr collection}" field="solrCollection">
-                    <f:select/>
-                </f:entry>
-            </f:dropdownListBlock>
-        </f:dropdownList>
+        <f:entry title="${%Lucene directory}" field="lucenePath">
+            <f:textbox name="lucenePath"/>
+        </f:entry>
     </f:section>
 </j:jelly>
