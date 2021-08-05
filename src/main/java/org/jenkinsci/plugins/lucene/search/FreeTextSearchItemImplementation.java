@@ -26,7 +26,7 @@ public class FreeTextSearchItemImplementation extends FreeTextSearchItem {
 
         this.bestFragments = new String[bestFragments.length];
         for (int i = 0; i < bestFragments.length; i++) {
-            this.bestFragments[i] = LINE_ENDINGS.matcher(bestFragments[i]).replaceAll("\1<br/>");
+            this.bestFragments[i] = LINE_ENDINGS.matcher(bestFragments[i]).replaceAll("<br/>");
         }
         this.iconFileName = iconFileName;
     }
