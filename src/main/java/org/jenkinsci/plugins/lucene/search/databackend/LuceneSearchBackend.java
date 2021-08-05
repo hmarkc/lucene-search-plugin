@@ -93,7 +93,6 @@ public class LuceneSearchBackend extends SearchBackend<Document> {
 
     public void close() {
         IOUtils.closeQuietly(dbWriter);
-//        IOUtils.closeQuietly(reader);
         IOUtils.closeQuietly(index);
     }
 
@@ -115,10 +114,6 @@ public class LuceneSearchBackend extends SearchBackend<Document> {
         if (words.size() >= 2) {
             Query jobNameQuery = new TermQuery(new Term(PROJECT_NAME.fieldName, words.get(0)));
             if (searcher.search(jobNameQuery, 1).scoreDocs.length > 0) {
-//                String[] queries = {words.get(0), words.get(1)};
-//                String[] fields = {PROJECT_NAME.fieldName, CONSOLE.fieldName};
-//                BooleanClause.Occur[] clauses = {BooleanClause.Occur.MUST, BooleanClause.Occur.MUST};
-//                return MultiFieldQueryParser.parse(queries, fields, clauses, analyzer);
                 return new BooleanQuery.Builder()
                         .add(new TermQuery(new Term(PROJECT_NAME.fieldName, words.get(0))), BooleanClause.Occur.MUST)
                         .add(getQueryParser().parse(words.get(1)), BooleanClause.Occur.MUST)
@@ -171,19 +166,11 @@ public class LuceneSearchBackend extends SearchBackend<Document> {
             }
             reader.close();
         } catch (ParseException e) {
-//            LOGGER.warn("Search Parsing Error: ", e);
+        //
         } catch (IOException e) {
             LOGGER.warn("Search IO Error: ", e);
         } catch (AlreadyClosedException e) {
             LOGGER.warn("IndexReader is closed: ", e);
-//        } finally {
-//            if (reader != null) {
-//                try {
-//                    reader.close();
-//                } catch (IOException e) {
-//                    LOGGER.error("Reader cannot be closed" + e);
-//                }
-//            }
         }
         LOGGER.debug("getHits ends");
         return luceneSearchResultImpl;
@@ -314,6 +301,7 @@ public class LuceneSearchBackend extends SearchBackend<Document> {
             currentProgress.setCurrent(reader.numDocs());
             dbWriter.deleteAll();
             dbWriter.commit();
+            reader.close();
             progress.setSuccessfullyCompleted();
         } catch (IOException e) {
             progress.completedWithErrors(e);
