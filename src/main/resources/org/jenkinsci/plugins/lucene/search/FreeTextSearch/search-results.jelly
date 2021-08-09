@@ -43,7 +43,6 @@
             <button class="bnt" style="left: 60px; background-color: Azure" onclick="toMiddle()">${%m}</button>
             <button class="bnt" style="left: 100px; background-color: Beige" onclick="toBottom()">${%b}</button>
             <hr />
-
             <j:choose>
                 <j:when test="${it.noResult}">
                     <div class='error'>

@@ -105,8 +105,4 @@ public class SearchBackendManager {
             progress.setFinished();
         }
     }
-
-    public void abort() {
-        getBackend().abort();
-    }
 }

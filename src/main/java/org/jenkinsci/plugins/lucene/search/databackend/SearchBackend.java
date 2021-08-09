@@ -8,7 +8,6 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 import jenkins.model.Jenkins;
 
@@ -20,7 +19,6 @@ import org.jenkinsci.plugins.lucene.search.FreeTextSearchItemImplementation;
 public abstract class SearchBackend<T> {
 
     private static final Logger LOGGER = Logger.getLogger(SearchBackend.class);
-    private final AtomicBoolean abort = new AtomicBoolean(false);
 
     @SuppressWarnings("rawtypes")
     private class RebuildBuildWorker implements RunWithArgument<Run> {
@@ -64,13 +62,7 @@ public abstract class SearchBackend<T> {
 
     public abstract void removeBuild(Run<?, ?> run);
 
-//    public abstract void cleanDeletedBuilds(Progress progress, Job<?, ?> job) throws Exception;
-
     public abstract void deleteJob(String jobName);
-
-    public void abort() {
-        abort.set(true);
-    }
 
     @SuppressWarnings("rawtypes")
     public void rebuildJob(Progress progress, Job<?, ?> job, int maxWorkers, boolean overwrite) {
@@ -80,9 +72,6 @@ public abstract class SearchBackend<T> {
             deleteJob(job.getName());
         }
         for (Run<?, ?> run : job.getBuilds()) {
-            if (abort.get()) {
-                break;
-            }
             progress.setMax(progress.getMax() + 1);
             burstExecutor.add(run);
 //            try {
@@ -131,7 +120,6 @@ public abstract class SearchBackend<T> {
     @SuppressWarnings("rawtypes")
     public void rebuildDatabase(ManagerProgress progress, int maxWorkers, Set<String> jobNames, boolean overwrite) {
         LOGGER.debug("rebuild database started in search backend");
-        abort.set(false);
         List<Job> allItems = Jenkins.getInstance().getAllItems(Job.class);
         try {
 //            Progress cleanProgress = progress.beginCleanJob();

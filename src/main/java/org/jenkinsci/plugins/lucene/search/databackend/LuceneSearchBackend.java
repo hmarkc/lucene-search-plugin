@@ -1,6 +1,5 @@
 package org.jenkinsci.plugins.lucene.search.databackend;
 
-import hudson.model.BallColor;
 import hudson.model.Run;
 import org.apache.commons.io.IOUtils;
 import org.apache.log4j.Logger;
@@ -48,11 +47,13 @@ public class LuceneSearchBackend extends SearchBackend<Document> {
     static final Map<Field, LuceneFieldType> FIELD_TYPE_MAP;
 
     static {
-        Map<Field, LuceneFieldType> types = new HashMap<Field, LuceneFieldType>();
+        Map<Field, LuceneFieldType> types = new HashMap<>();
         types.put(PROJECT_NAME, LuceneFieldType.TEXT);
         types.put(BUILD_NUMBER, LuceneFieldType.STRING);
         types.put(START_TIME, LuceneFieldType.LONG);
         types.put(CONSOLE, LuceneFieldType.TEXT);
+        types.put(BUILD_DISPLAY_NAME, LuceneFieldType.TEXT);
+        types.put(BUILD_PARAMETER, LuceneFieldType.TEXT);
         FIELD_TYPE_MAP = Collections.unmodifiableMap(types);
     }
 
@@ -61,7 +62,7 @@ public class LuceneSearchBackend extends SearchBackend<Document> {
     private final Directory index;
     private final Analyzer analyzer;
     private final IndexWriter dbWriter;
-    private ScoreDoc lastDoc;
+    private volatile ScoreDoc lastDoc;
 
     public LuceneSearchBackend(final File indexPath) throws IOException {
         analyzer = new CaseSensitiveAnalyzer();
@@ -106,34 +107,53 @@ public class LuceneSearchBackend extends SearchBackend<Document> {
         return defaultNumber;
     }
 
-    private Query parseNameAndConsole(String q, IndexSearcher searcher) throws ParseException, IOException {
-
-        List<String> words = new ArrayList<>(Arrays.asList(q.trim().split(" ", 2)));
+    private Pair<Field, Query, Query> parseQuery(String q, IndexSearcher searcher) throws ParseException, IOException {
+        List<String> words = new ArrayList<>(Arrays.asList(q.trim().split("\\s+", 3)));
         words.removeAll(Arrays.asList("", null));
+
+        Field field = CONSOLE;
+        Query query = getQueryParser().parse(q);
+        Query highlight = query;
+
 
         if (words.size() >= 2) {
             Query jobNameQuery = new TermQuery(new Term(PROJECT_NAME.fieldName, words.get(0)));
             if (searcher.search(jobNameQuery, 1).scoreDocs.length > 0) {
-                return new BooleanQuery.Builder()
-                        .add(new TermQuery(new Term(PROJECT_NAME.fieldName, words.get(0))), BooleanClause.Occur.MUST)
-                        .add(getQueryParser().parse(words.get(1)), BooleanClause.Occur.MUST)
-                        .build();
+                BooleanQuery.Builder builder = new BooleanQuery.Builder().add(jobNameQuery, BooleanClause.Occur.MUST);
+                String content;
+                if (words.get(1).equals("-n") && words.size() >= 3) {
+                    content = words.get(2);
+                    field = BUILD_DISPLAY_NAME;
+                } else if (words.get(1).equals("-p") && words.size() >= 3) {
+                    content = words.get(2);
+                    field = BUILD_PARAMETER;
+                } else {
+                    content = words.get(1);
+                    if (words.size() > 2) {
+                        content += " " + words.get(2);
+                    }
+                }
+                QueryParser parser = new QueryParser(field.fieldName, analyzer);
+                highlight = parser.parse(content);
+                query = builder.add(highlight, BooleanClause.Occur.MUST).build();
             }
         }
-
-        MultiFieldQueryParser queryParser = getQueryParser();
-        return queryParser.parse(q).rewrite(searcher.getIndexReader());
+        return new Pair<>(field, query.rewrite(searcher.getIndexReader()), highlight);
     }
+
 
     @Override
     public List<FreeTextSearchItemImplementation> getHits(String q, boolean searchNext) {
-        LOGGER.debug("getHits starts");
         List<FreeTextSearchItemImplementation> luceneSearchResultImpl = new ArrayList<>();
         try {
             IndexReader reader = DirectoryReader.open(index);
             IndexSearcher searcher = new IndexSearcher(reader);
-            Query query = parseNameAndConsole(q, searcher);
-            QueryTermScorer scorer = new QueryTermScorer(query);
+            Pair<Field, Query, Query> fieldQueryPair = parseQuery(q, searcher);
+            Field field = fieldQueryPair.first;
+            Query query = fieldQueryPair.second;
+            Query highlight = fieldQueryPair.third;
+
+            QueryTermScorer scorer = new QueryTermScorer(highlight);
             Highlighter highlighter = new Highlighter(new SimpleHTMLFormatter(), scorer);
             ScoreDoc[] hits;
             if (searchNext) {
@@ -149,30 +169,32 @@ public class LuceneSearchBackend extends SearchBackend<Document> {
                 Document doc = searcher.doc(hit.doc);
                 String[] bestFragments = EMPTY_ARRAY;
                 try {
-                    bestFragments = highlighter.getBestFragments(analyzer, CONSOLE.fieldName,
-                            doc.get(CONSOLE.fieldName), MAX_NUM_FRAGMENTS);
+                    bestFragments = highlighter.getBestFragments(analyzer, field.fieldName,
+                            doc.get(field.fieldName), MAX_NUM_FRAGMENTS);
                 } catch (InvalidTokenOffsetsException e) {
                     LOGGER.warn("Failed to find bestFragments", e);
                 }
 
-                BallColor buildIcon = BallColor.BLUE;
-
                 String projectName = doc.get(PROJECT_NAME.fieldName);
                 String buildNumber = doc.get(BUILD_NUMBER.fieldName);
+                String searchName = doc.get(BUILD_DISPLAY_NAME.fieldName);
 
                 String url = "/job/" + projectName + "/" + buildNumber + "/";
-
-                luceneSearchResultImpl.add(new FreeTextSearchItemImplementation(projectName, buildNumber, bestFragments, buildIcon.getImage(), url));
+                luceneSearchResultImpl.add(new FreeTextSearchItemImplementation(searchName,
+                                                                                projectName,
+                                                                                bestFragments,
+                                                                                url,
+                                                                    field == CONSOLE
+                                                                                    || field == BUILD_PARAMETER));
             }
             reader.close();
         } catch (ParseException e) {
-        //
+//            LOGGER.warn("Search Parsing Error: ", e);
         } catch (IOException e) {
             LOGGER.warn("Search IO Error: ", e);
         } catch (AlreadyClosedException e) {
             LOGGER.warn("IndexReader is closed: ", e);
         }
-        LOGGER.debug("getHits ends");
         return luceneSearchResultImpl;
     }
 
@@ -205,6 +227,7 @@ public class LuceneSearchBackend extends SearchBackend<Document> {
                 org.apache.lucene.document.Field.Store store = field.persist ? STORE : DONT_STORE;
                 Object fieldValue = field.getValue(run);
                 if (fieldValue != null) {
+                    LOGGER.debug("The field is " + fieldValue);
                     switch (FIELD_TYPE_MAP.get(field)) {
                         case LONG:
                             doc.add(new LongField(field.fieldName, ((Number) fieldValue).longValue(), store));
@@ -254,8 +277,8 @@ public class LuceneSearchBackend extends SearchBackend<Document> {
     @Override
     public boolean findRunIndex(Run<?, ?> run) {
         try {
-            IndexReader reader = DirectoryReader.open(index);
             Query query = getRunQuery(run);
+            IndexReader reader = DirectoryReader.open(index);
             IndexSearcher searcher = new IndexSearcher(reader);
             TopDocs docs = searcher.search(query, 1);
             reader.close();
@@ -277,7 +300,7 @@ public class LuceneSearchBackend extends SearchBackend<Document> {
         } catch (IOException e) {
             LOGGER.warn("removeBuild: " + e);
         } catch (ParseException e) {
-            //
+            LOGGER.warn("removeBuild: " + e);
         }
     }
 
@@ -309,5 +332,17 @@ public class LuceneSearchBackend extends SearchBackend<Document> {
             currentProgress.setFinished();
             progress.jobComplete();
         }
+    }
+}
+
+class Pair<T, S, Q> {
+    public final T first;
+    public final S second;
+    public final Q third;
+
+    Pair(T first, S second, Q third) {
+        this.first = first;
+        this.second = second;
+        this.third = third;
     }
 }

@@ -12,7 +12,6 @@ import org.kohsuke.stapler.bind.JavaScriptMethod;
 import javax.servlet.ServletException;
 import java.io.IOException;
 import java.util.*;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 

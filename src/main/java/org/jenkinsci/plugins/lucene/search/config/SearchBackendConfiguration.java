@@ -3,27 +3,33 @@ package org.jenkinsci.plugins.lucene.search.config;
 import com.google.common.annotations.VisibleForTesting;
 import hudson.Extension;
 import hudson.util.FormValidation;
-import jenkins.model.GlobalConfiguration;
-import jenkins.model.Jenkins;
-import net.sf.json.JSONObject;
-import org.apache.commons.io.IOUtils;
-import org.apache.http.HttpResponse;
-import org.apache.http.client.HttpClient;
-import org.apache.http.client.methods.HttpGet;
+import hudson.util.ListBoxModel;
 
-import org.jenkinsci.plugins.lucene.search.databackend.SearchBackendManager;
-import org.kohsuke.stapler.DataBoundConstructor;
-import org.kohsuke.stapler.QueryParameter;
-import org.kohsuke.stapler.StaplerRequest;
-import org.apache.http.impl.client.HttpClientBuilder;
-import javax.inject.Inject;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.URI;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.logging.Logger;
+
+import javax.inject.Inject;
+
+import jenkins.model.GlobalConfiguration;
+import jenkins.model.Jenkins;
+import net.sf.json.JSONObject;
+
+import org.apache.commons.io.IOUtils;
+import org.apache.http.HttpResponse;
+import org.apache.http.client.HttpClient;
+import org.apache.http.client.methods.HttpGet;
+import org.apache.http.impl.client.HttpClientBuilder;
+import org.jenkinsci.plugins.lucene.search.databackend.SearchBackendManager;
+import org.kohsuke.stapler.DataBoundConstructor;
+import org.kohsuke.stapler.QueryParameter;
+import org.kohsuke.stapler.StaplerRequest;
 
 @Extension
 public class SearchBackendConfiguration extends GlobalConfiguration {
@@ -39,7 +45,7 @@ public class SearchBackendConfiguration extends GlobalConfiguration {
 
     @DataBoundConstructor
     public SearchBackendConfiguration(final String lucenePath,
-                                      boolean useSecurity) {
+           boolean useSecurity) {
         this(new File(lucenePath), useSecurity);
     }
 

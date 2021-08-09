@@ -58,7 +58,7 @@ public class LuceneManager extends ManagementLink {
 
         if (statement.code == 0) {
             progress = new ManagerProgress();
-            Set<String> jobs = new HashSet(Arrays.asList(jobNames.split(" ")));
+            Set<String> jobs = new HashSet(Arrays.asList(jobNames.split("\\s+")));
             jobs.removeAll(Collections.singleton(""));
             if (checkJobNames(jobs)) {
                 backendManager.rebuildDatabase(progress, this.workers, jobs, overwrite.equals("overwrite"));
@@ -102,9 +102,19 @@ public class LuceneManager extends ManagementLink {
     @JavaScriptMethod
     public JSReturnCollection abort() {
         JSReturnCollection statement = verifyNotInProgress();
-        if (statement.code == 1) {
-            backendManager.abort();
-        }
+//        if (statement.code == 1) {
+//            statement.message = "Aborted";
+//            statement.code = 0;
+//            statement.running = false;
+//            statement.neverStarted = true;
+//            try {
+//                progress.assertNoErrors();
+//            } catch (Exception e) {
+//                progress.completedWithErrors(e);
+//                return statement;
+//            }
+//            progress.jobComplete();
+//        }
         this.progress = null;
         return statement;
     }
