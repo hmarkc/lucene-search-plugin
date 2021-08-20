@@ -249,9 +249,14 @@ public class LuceneSearchBackend extends SearchBackend<Document> {
             if (hits.length != 0) {
                 lastDoc = hits[hits.length - 1];
             }
+            TreeMultimap<Float, Document> docs = TreeMultimap.create(FLOAT_COMPARATOR, START_TIME_COMPARATOR);
 
             for (ScoreDoc hit : hits) {
                 Document doc = searcher.doc(hit.doc);
+                docs.put(hit.score, doc);
+            }
+
+            for (Document doc : docs.values()) {
                 String[] bestFragments = EMPTY_ARRAY;
                 try {
                     bestFragments = highlighter.getBestFragments(analyzer, CONSOLE.fieldName,
@@ -300,6 +305,8 @@ public class LuceneSearchBackend extends SearchBackend<Document> {
         queryParser.setDefaultOperator(QueryParser.Operator.AND);
         queryParser.setLocale(LOCALE);
         queryParser.setAnalyzeRangeTerms(true);
+        queryParser.setAllowLeadingWildcard(true);
+        queryParser.setLowercaseExpandedTerms(false);
         return queryParser;
     }
 

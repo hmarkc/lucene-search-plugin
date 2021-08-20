@@ -78,6 +78,16 @@ public class FreeTextSearch extends Search {
         return getPage().isEmpty();
     }
 
+    @JavaScriptMethod
+    public boolean isFirstPage() {
+        return curr_page <= 1;
+    }
+
+    @JavaScriptMethod
+    public boolean isLastPage() {
+        return curr_page >= max_page;
+    }
+
     @Override
     public void doIndex(StaplerRequest req, StaplerResponse rsp) throws IOException, ServletException {
         query = req.getParameter("q");

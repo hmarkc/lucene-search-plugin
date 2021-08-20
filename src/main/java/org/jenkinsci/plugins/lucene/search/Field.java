@@ -12,7 +12,7 @@ import org.apache.commons.io.output.ByteArrayOutputStream;
 
 public enum Field {
 
-    PROJECT_NAME("job", Persist.TRUE) {
+    PROJECT_NAME("j", Persist.TRUE) {
         public String getValue(final Run<?, ?> build) {
             StringBuilder builder = new StringBuilder();
             if (!build.getParent().getParent().getDisplayName().equalsIgnoreCase("jenkins")) {
@@ -23,7 +23,7 @@ public enum Field {
         }
     },
 
-    BUILD_NUMBER("buildnumber", DefaultSearchable.FALSE, Numeric.TRUE, Persist.TRUE) {
+    BUILD_NUMBER("n", DefaultSearchable.FALSE, Numeric.TRUE, Persist.TRUE) {
         @Override
         public String getValue(Run<?, ?> build) {
             return String.valueOf(build.getNumber());

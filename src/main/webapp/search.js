@@ -18,8 +18,9 @@ function toMiddle() {
     window.scrollTo(0, document.body.scrollHeight / 2);
 }
 
-function load(hits) {
-    document.getElementById("numberOfResults").innerHTML = "The number of results: " + hits.length;
+function load(hits, ) {
+    var numResults = (hits.length == 100) ? "100+" : hits.length;
+    document.getElementById("numberOfResults").innerHTML = "The number of results: " + numResults;
 
     const results = document.getElementById("results");
     while (results.firstChild) {
@@ -48,5 +49,11 @@ function load(hits) {
         }
         results.appendChild(list);
     }
+    search.isFirstPage(function(t) {
+        document.getElementById("btnPrev").style.display = (t.responseObject()) ? "none" : "";
+    })
+    search.isLastPage(function(t) {
+        document.getElementById("btnNext").style.display = (t.responseObject()) ? "none" : "";
+    })
     window.scrollTo(0, 0);
 }

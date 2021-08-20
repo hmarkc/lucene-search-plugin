@@ -38,7 +38,7 @@
                 </div>
                 <br/>
 
-                <div id="message" class="success"></div>
+                <div id="message" class="success"/>
 
                 <div>
                     <button id="btnAbort" style="display:none" onclick="abort()">${%Abort}</button>${% }

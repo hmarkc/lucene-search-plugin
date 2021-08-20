@@ -7,62 +7,106 @@
         <l:side-panel>
             <link rel="stylesheet" type="text/css" href="${rootURL}/plugin/lucene-search/search.css" media="screen"/>
             <h3>${%Search Help}</h3>
-                <p>
-                Search Range: <br/>
-                    1. Console log <br/>
-                    2. Build display name <br/>
-                    3. Build parameter <br/><br/>
-                Search Mode: <br/>
-                    1. Single-job search <br/>
-                    2. Across-job search <br/><br/>
+            <p>
+                Search Range:
+                <br/>
+                1. Console log
+                <br/>
+                2. Build display name
+                <br/>
+                3. Build parameter
+                <br/>
+                <br/>
+                Search Mode:
+                <br/>
+                1. Single-job search
+                <br/>
+                2. Across-job search
+                <br/>
+                <br/>
                 If the first word of the query is recognized as a job name, single-job search will be performed;
-                    otherwise, across-job search will be performed. <br/><br/>
-                For console log search, put "c:" before the query words;
-                    for build display name, put "d:";
-                    for build parameter, put "p:". <br/>
-                </p>
+                otherwise, across-job search will be performed.
+                <br/>
+                <br/>
+                The list of keywords are:
+                <br/>
+                "c" : console log
+                <br/>
+                "d" : build display name
+                <br/>
+                "p" : build parameter
+                <br/>
+                "j" : job name
+                <br/>
+                "n" : build number
+                <br/>
+            </p>
             <h3>${%Search examples}</h3>
-                <p>
-                Search across different jobs: <br/>
-                "some keywords in some console log" <br/><br/>
-                Search in a specific job: <br/>
-                "jobName some keywords in some console log" <br/><br/>
-                Search for console log in a specific job: <br/>
-                "jobName c:words you want to search for" <br/>
-                </p>
+            <p>
+                Search across different jobs:
+                <br/>
+                "some keywords in some console log"
+                <br/>
+                <br/>
+                Search in a specific job:
+                <br/>
+                "jobName some keywords in some console log"
+                <br/>
+                <br/>
+                Search for console log in a specific job:
+                <br/>
+                "jobName c:words you want to search for"
+                <br/>
+            </p>
             <h3>${%Operators}</h3>
-                <p>
-                ?: one unknown character <br/><br/>
-                *: any number of unknown characters <br/><br/>
-                AND(&amp;&amp;): must satisfy both queries; it is the default logical operator <br/><br/>
-                OR(||): must satisfy at least one query <br/><br/>
-                NOT(-): must not satisfy the following query <br/><br/>
-                "": put query between double quotes to search for successive words <br/>
-                </p>
+            <p>
+                ?: one unknown character
+                <br/>
+                <br/>
+                *: any number of unknown characters
+                <br/>
+                <br/>
+                AND(&amp;&amp;): must satisfy both queries; it is the default logical operator
+                <br/>
+                <br/>
+                OR(||): must satisfy at least one query
+                <br/>
+                <br/>
+                NOT(-): must not satisfy the following query
+                <br/>
+                <br/>
+                "": put query between double quotes to search for successive words
+                <br/>
+            </p>
             <h3>${%Escaping}</h3>
-                <p>
-                ${%Some chars needs to be escaped}<br/>
-                "error\: something went wrong" <br/>
-                "plug\-in needs to be like this"<br/>
+            <p>
+                ${%Some chars needs to be escaped}
+                <br/>
+                "error\: something went wrong"
+                <br/>
+                "plug\-in needs to be like this"
+                <br/>
                 "c:\\ also needs to be escaped"
-                </p>
+            </p>
             <h3>${%More information}</h3>
-                <p>
-                <a href="http://www.lucenetutorial.com/lucene-query-syntax.html">${%Lucene Query Syntax}</a><br/>
-                </p>
+            <p>
+                <a href="http://www.lucenetutorial.com/lucene-query-syntax.html">${%Lucene Query Syntax}</a>
+                <br/>
+            </p>
         </l:side-panel>
 
         <l:main-panel>
             <j:set var="searchModelHits" value="${it.searchModelHits}"/>
-            <script type="text/javascript" src="${rootURL}/plugin/lucene-search/search.js"></script>
+            <script type="text/javascript" src="${rootURL}/plugin/lucene-search/search.js"/>
             <script>
-                var search = <st:bind value="${it}"/>
+                var search =
+                <st:bind value="${it}"/>
             </script>
             <h1>${%Search for} '${q}'</h1>
-            <h2 id="numberOfResults" style="display: inline"></h2>
+            <h2 id="numberOfResults" style="display: inline"/>
             <button class="bnt" style="left: 60px; background-color: Azure" onclick="toMiddle()">${%m}</button>
             <button class="bnt" style="left: 100px; background-color: Beige" onclick="toBottom()">${%b}</button>
-            <hr />
+            <hr/>
             <j:choose>
                 <j:when test="${it.noResult}">
                     <div class='error'>
