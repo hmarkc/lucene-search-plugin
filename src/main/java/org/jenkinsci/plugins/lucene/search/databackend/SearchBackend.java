@@ -74,24 +74,6 @@ public abstract class SearchBackend<T> {
         for (Run<?, ?> run : job.getBuilds()) {
             progress.setMax(progress.getMax() + 1);
             burstExecutor.add(run);
-//            try {
-//                if (overwrite) {
-//                    storeBuild(run);
-//                } else {
-//                    if (!findRunIndex(run)) {
-//                        storeBuild(run);
-//                    }
-//                }
-//            } catch (Exception e) {
-//                progress.completedWithErrors(e);
-//                LOGGER.warn("Error rebuilding build", e);
-//            } finally {
-//                progress.incCurrent();
-//            }
-//        } catch(Exception e){
-//            e.printStackTrace();
-//            LOGGER.error("During rebuildJob, this error occurs: ", e);
-//        }
         }
         try {
             burstExecutor.waitForCompletion();
@@ -122,11 +104,6 @@ public abstract class SearchBackend<T> {
         LOGGER.debug("rebuild database started in search backend");
         List<Job> allItems = Jenkins.getInstance().getAllItems(Job.class);
         try {
-//            Progress cleanProgress = progress.beginCleanJob();
-//            cleanDeletedJobs(cleanProgress);
-//            progress.jobComplete();
-//            progress.assertNoErrors();
-//            ensureOpen();
             if (!jobNames.isEmpty()) {
                 progress.setMax(jobNames.size());
                 for (Job job : allItems) {
@@ -160,8 +137,6 @@ public abstract class SearchBackend<T> {
             if (job.getBuilds().isEmpty()) {
                 deleteJob(job.getName());
             } else {
-//                cleanDeletedBuilds(currentJobProgress, job);
-//                progress.assertNoErrors();
                 rebuildJob(currentJobProgress, job, maxWorkers, overwrite);
                 progress.assertNoErrors();
             }

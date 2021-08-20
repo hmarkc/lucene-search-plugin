@@ -97,8 +97,6 @@ public class SearchBackendManager {
         try {
             getBackend().rebuildDatabase(progress, maxWorkers, jobs, overwrite);
         } catch (Exception e) {
-//            progress.withReason(e);
-//            progress.setReasonMessage(e.toString());
             progress.completedWithErrors(e);
             LOG.error("Failed rebuilding search database", e);
         } finally {

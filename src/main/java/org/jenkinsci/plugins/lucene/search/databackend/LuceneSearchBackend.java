@@ -1,6 +1,15 @@
 package org.jenkinsci.plugins.lucene.search.databackend;
 
+import com.google.common.collect.TreeMultimap;
+import hudson.model.Job;
 import hudson.model.Run;
+
+import java.io.File;
+import java.io.IOException;
+import java.util.*;
+
+import hudson.util.RunList;
+import jenkins.model.Jenkins;
 import org.apache.commons.io.IOUtils;
 import org.apache.log4j.Logger;
 import org.apache.lucene.analysis.Analyzer;
@@ -23,10 +32,6 @@ import org.apache.lucene.store.FSDirectory;
 import org.jenkinsci.plugins.lucene.search.Field;
 import org.jenkinsci.plugins.lucene.search.FreeTextSearchExtension;
 import org.jenkinsci.plugins.lucene.search.FreeTextSearchItemImplementation;
-
-import java.io.File;
-import java.io.IOException;
-import java.util.*;
 
 import static org.jenkinsci.plugins.lucene.search.Field.*;
 
@@ -56,6 +61,28 @@ public class LuceneSearchBackend extends SearchBackend<Document> {
         types.put(BUILD_PARAMETER, LuceneFieldType.TEXT);
         FIELD_TYPE_MAP = Collections.unmodifiableMap(types);
     }
+
+    private static final Comparator<Float> FLOAT_COMPARATOR = new Comparator<Float>() {
+        @Override
+        public int compare(Float o1, Float o2) {
+            return o2.compareTo(o1);
+        }
+    };
+
+    private static final Comparator<Document> START_TIME_COMPARATOR = new Comparator<Document>() {
+        private Long getStartTime(Document o) {
+            IndexableField field = o.getField(START_TIME.fieldName);
+            if (field != null) {
+                return field.numericValue().longValue();
+            }
+            return 0l;
+        }
+
+        @Override
+        public int compare(Document o1, Document o2) {
+            return getStartTime(o2).compareTo(getStartTime(o1));
+        }
+    };
 
     private static final int MAX_HITS_PER_PAGE = 100;
 
@@ -107,38 +134,92 @@ public class LuceneSearchBackend extends SearchBackend<Document> {
         return defaultNumber;
     }
 
-    private Pair<Field, Query, Query> parseQuery(String q, IndexSearcher searcher) throws ParseException, IOException {
-        List<String> words = new ArrayList<>(Arrays.asList(q.trim().split("\\s+", 3)));
-        words.removeAll(Arrays.asList("", null));
+    private static Set<String> calculateQueryFieldsRecursively(Query query) {
+        Set<String> fields = new HashSet<>();
 
-        Field field = CONSOLE;
-        Query query = getQueryParser().parse(q);
-        Query highlight = query;
-
-
-        if (words.size() >= 2) {
-            Query jobNameQuery = new TermQuery(new Term(PROJECT_NAME.fieldName, words.get(0)));
-            if (searcher.search(jobNameQuery, 1).scoreDocs.length > 0) {
-                BooleanQuery.Builder builder = new BooleanQuery.Builder().add(jobNameQuery, BooleanClause.Occur.MUST);
-                String content;
-                if (words.get(1).equals("-n") && words.size() >= 3) {
-                    content = words.get(2);
-                    field = BUILD_DISPLAY_NAME;
-                } else if (words.get(1).equals("-p") && words.size() >= 3) {
-                    content = words.get(2);
-                    field = BUILD_PARAMETER;
-                } else {
-                    content = words.get(1);
-                    if (words.size() > 2) {
-                        content += " " + words.get(2);
-                    }
-                }
-                QueryParser parser = new QueryParser(field.fieldName, analyzer);
-                highlight = parser.parse(content);
-                query = builder.add(highlight, BooleanClause.Occur.MUST).build();
+        if (query instanceof TermQuery) {
+            TermQuery tQuery = (TermQuery) query;
+            Term term = tQuery.getTerm();
+            fields.add(term.field());
+        } else if (query instanceof BooleanQuery) {
+            BooleanQuery bQuery = (BooleanQuery) query;
+            List<BooleanClause> clauses = bQuery.clauses();
+            for (BooleanClause clause : clauses) {
+                Query innerQuery = clause.getQuery();
+                Set<String> innerFields = calculateQueryFieldsRecursively(innerQuery);
+                fields.addAll(innerFields);
             }
         }
-        return new Pair<>(field, query.rewrite(searcher.getIndexReader()), highlight);
+        return fields;
+    }
+
+    // This method returns paged build history
+    private List<FreeTextSearchItemImplementation> getBuildHistory(IndexSearcher searcher, Boolean searchNext) throws IOException {
+        List<FreeTextSearchItemImplementation> luceneSearchResultImpl = new ArrayList<>();
+        Query query = new MatchAllDocsQuery();
+        RunList<Run> runList = new RunList<>(Jenkins.getInstance().getAllItems(Job.class));
+        ScoreDoc[] hits;
+        if (searchNext) {
+            hits = searcher.searchAfter(lastDoc, query, MAX_HITS_PER_PAGE).scoreDocs;
+        } else {
+            hits = searcher.searchAfter(null, query, MAX_HITS_PER_PAGE).scoreDocs;
+        }
+        if (hits.length != 0) {
+            lastDoc = hits[hits.length - 1];
+        }
+        TreeMultimap<Float, Document> docs = TreeMultimap.create(FLOAT_COMPARATOR, START_TIME_COMPARATOR);
+
+        for (ScoreDoc hit : hits) {
+            Document doc = searcher.doc(hit.doc);
+            docs.put(hit.score, doc);
+        }
+        for (Document doc : docs.values()) {
+            String projectName = doc.get(PROJECT_NAME.fieldName);
+            String buildNumber = doc.get(BUILD_NUMBER.fieldName);
+            String searchName = doc.get(BUILD_DISPLAY_NAME.fieldName);
+            String startTime = doc.get(START_TIME.fieldName);
+
+            String url = "/job/" + projectName + "/" + buildNumber + "/";
+            luceneSearchResultImpl.add(new FreeTextSearchItemImplementation(
+                    projectName + " " + searchName + " " + startTime,
+                    projectName,
+                    EMPTY_ARRAY,
+                    url,
+                    false));
+        }
+        searcher.getIndexReader().close();
+        return luceneSearchResultImpl;
+    }
+
+    private Pair<Query, Query, Boolean> parseQuery(String q, IndexSearcher searcher) throws ParseException, IOException {
+
+        List<String> words = new ArrayList<>(Arrays.asList(q.trim().split("\\s+", 2)));
+        words.removeAll(Arrays.asList("", null));
+
+        QueryParser parser = getQueryParser();
+        Query query = parser.parse(q);
+        Query highlight = query;
+
+        for (String word : words) {
+            LOGGER.debug("word is " + word);
+        }
+
+        if (words.size() >= 2) {
+            Query jobNameQuery = parser.parse(PROJECT_NAME.fieldName + ":" + words.get(0));
+            LOGGER.debug("The job exists:" + (searcher.search(jobNameQuery, 1).scoreDocs.length));
+            if (searcher.search(jobNameQuery, 1).scoreDocs.length > 0) {
+                highlight = parser.parse(words.get(1));
+                query = new BooleanQuery.Builder()
+                        .add(jobNameQuery, BooleanClause.Occur.MUST)
+                        .add(highlight, BooleanClause.Occur.MUST)
+                        .build();
+            }
+        }
+        LOGGER.debug("The number of clauses are " + calculateQueryFieldsRecursively(highlight));
+        Set<String> fields = calculateQueryFieldsRecursively(highlight);
+        return new Pair<>(query.rewrite(searcher.getIndexReader()),
+                highlight.rewrite(searcher.getIndexReader()),
+                fields.size() != 1 || !fields.contains(BUILD_DISPLAY_NAME.fieldName));
     }
 
 
@@ -148,12 +229,16 @@ public class LuceneSearchBackend extends SearchBackend<Document> {
         try {
             IndexReader reader = DirectoryReader.open(index);
             IndexSearcher searcher = new IndexSearcher(reader);
-            Pair<Field, Query, Query> fieldQueryPair = parseQuery(q, searcher);
-            Field field = fieldQueryPair.first;
-            Query query = fieldQueryPair.second;
-            Query highlight = fieldQueryPair.third;
+            if (q.isEmpty()) {
+                return getBuildHistory(searcher, searchNext);
+            }
+            Pair<Query, Query, Boolean> fieldQueryPair = parseQuery(q, searcher);
+            Query query = fieldQueryPair.first;
+            Query highlight = fieldQueryPair.second;
+            Boolean isShowConsole = fieldQueryPair.third;
 
             QueryTermScorer scorer = new QueryTermScorer(highlight);
+            LOGGER.debug("highlight is " + highlight);
             Highlighter highlighter = new Highlighter(new SimpleHTMLFormatter(), scorer);
             ScoreDoc[] hits;
             if (searchNext) {
@@ -169,8 +254,8 @@ public class LuceneSearchBackend extends SearchBackend<Document> {
                 Document doc = searcher.doc(hit.doc);
                 String[] bestFragments = EMPTY_ARRAY;
                 try {
-                    bestFragments = highlighter.getBestFragments(analyzer, field.fieldName,
-                            doc.get(field.fieldName), MAX_NUM_FRAGMENTS);
+                    bestFragments = highlighter.getBestFragments(analyzer, CONSOLE.fieldName,
+                            doc.get(CONSOLE.fieldName), MAX_NUM_FRAGMENTS);
                 } catch (InvalidTokenOffsetsException e) {
                     LOGGER.warn("Failed to find bestFragments", e);
                 }
@@ -181,11 +266,10 @@ public class LuceneSearchBackend extends SearchBackend<Document> {
 
                 String url = "/job/" + projectName + "/" + buildNumber + "/";
                 luceneSearchResultImpl.add(new FreeTextSearchItemImplementation(searchName,
-                                                                                projectName,
-                                                                                bestFragments,
-                                                                                url,
-                                                                    field == CONSOLE
-                                                                                    || field == BUILD_PARAMETER));
+                        projectName,
+                        bestFragments,
+                        url,
+                        isShowConsole));
             }
             reader.close();
         } catch (ParseException e) {
@@ -267,11 +351,12 @@ public class LuceneSearchBackend extends SearchBackend<Document> {
     }
 
     public Query getRunQuery(Run<?, ?> run) throws ParseException {
-        assert (run != null);
-        String[] queries = {run.getParent().getName(), String.valueOf(run.getNumber())};
-        String[] fields = {PROJECT_NAME.fieldName, BUILD_NUMBER.fieldName};
-        BooleanClause.Occur[] clauses = {BooleanClause.Occur.MUST, BooleanClause.Occur.MUST};
-        return MultiFieldQueryParser.parse(queries, fields, clauses, analyzer);
+        BooleanQuery.Builder builder = new BooleanQuery.Builder();
+        builder.add(getQueryParser()
+                .parse(PROJECT_NAME.fieldName + ":" + run.getParent().getDisplayName()), BooleanClause.Occur.MUST)
+                .add(getQueryParser()
+                        .parse(BUILD_NUMBER.fieldName + ":" + run.getNumber()), BooleanClause.Occur.MUST);
+        return builder.build();
     }
 
     @Override
@@ -308,11 +393,13 @@ public class LuceneSearchBackend extends SearchBackend<Document> {
     public void deleteJob(String jobName) {
         LOGGER.error("Job deletion started for: " + jobName);
         try {
-            Term term = new Term(PROJECT_NAME.fieldName, jobName);
-            dbWriter.deleteDocuments(term);
+            Query query = getQueryParser().parse(PROJECT_NAME.fieldName + ":" + jobName);
+            dbWriter.deleteDocuments(query);
             dbWriter.commit();
         } catch (IOException e) {
             LOGGER.error("Could not delete job", e);
+        } catch (ParseException e) {
+            //
         }
     }
 

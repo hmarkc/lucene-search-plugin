@@ -32,8 +32,8 @@
                 <div>
                     <label id="lblOverwrite">${%If you have existing index database, you can either overwrite or preserve the old index}</label><br/>
                     <select name="overwrite" id="selectOverwrite">
-                        <option value="preserve">preserve</option>
                         <option value="overwrite">overwrite</option>
+                        <option value="preserve">preserve</option>
                     </select>
                 </div>
                 <br/>

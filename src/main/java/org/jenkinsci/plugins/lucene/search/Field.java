@@ -11,14 +11,8 @@ import java.util.Map;
 import org.apache.commons.io.output.ByteArrayOutputStream;
 
 public enum Field {
-//    ID("id", DefaultSearchable.FALSE, Numeric.TRUE, Persist.TRUE) {
-//        @Override
-//        public String getValue(Run<?, ?> build) {
-//            return build.getParent().getName() + build.getNumber();
-//        }
-//    },
 
-    PROJECT_NAME("projectname", Persist.TRUE) {
+    PROJECT_NAME("job", Persist.TRUE) {
         public String getValue(final Run<?, ?> build) {
             StringBuilder builder = new StringBuilder();
             if (!build.getParent().getParent().getDisplayName().equalsIgnoreCase("jenkins")) {
@@ -36,14 +30,14 @@ public enum Field {
         }
     },
 
-    BUILD_DISPLAY_NAME("builddisplayname", Persist.TRUE) {
+    BUILD_DISPLAY_NAME("d", Persist.TRUE) {
         @Override
         public String getValue(Run<?, ?> build) {
             return build.getDisplayName();
         }
     },
 
-    BUILD_PARAMETER("buildparameter", Persist.TRUE) {
+    BUILD_PARAMETER("p", Persist.TRUE) {
         @Override
         public String getValue(Run<?, ?> build) {
             ParametersAction parametersAction = build.getAction(ParametersAction.class);
@@ -59,26 +53,6 @@ public enum Field {
             }
         }
     },
-//    RESULT("result", Persist.TRUE) {
-//        @Override
-//        public Result getValue(Run<?, ?> build) {
-//            return build.getResult();
-//        }
-//    },
-
-//    DESCRIPTION("description", Persist.TRUE) {
-//        @Override
-//        public String getValue(Run<?, ?> build) {
-//            return build.getParent().getDescription();
-//        }
-//    },
-
-//    DURATION("duration", DefaultSearchable.FALSE) {
-//        @Override
-//        public Long getValue(Run<?, ?> build) {
-//            return build.getDuration();
-//        }
-//    },
 
     START_TIME("starttime", DefaultSearchable.FALSE, Numeric.TRUE, Persist.TRUE) {
         @Override
@@ -87,36 +61,7 @@ public enum Field {
         }
     },
 
-//    BUILT_ON("builton") {
-//        @Override
-//        public String getValue(Run<?, ?> build) {
-//            if (build.getExecutor() != null) {
-//                return build.getExecutor().getDisplayName();
-//            } else {
-//                return "null";
-//            }
-//        }
-//    },
-
-//    START_CAUSE("startcause") {
-//        @Override
-//        public String getValue(Run<?, ?> build) {
-//            StringBuilder shortDescriptions = new StringBuilder();
-//            for (Cause cause : build.getCauses()) {
-//                shortDescriptions.append(" ").append(cause.getShortDescription());
-//            }
-//            return shortDescriptions.toString();
-//        }
-//    },
-
-//    BALL_COLOR("color", DefaultSearchable.FALSE, Persist.TRUE) {
-//        @Override
-//        public String getValue(Run<?, ?> build) {
-//            return build.getIconColor().name();
-//        }
-//    },
-
-    CONSOLE("console", Persist.TRUE) {
+    CONSOLE("c", Persist.TRUE) {
         @Override
         public String getValue(Run<?, ?> build) {
             try {
@@ -124,67 +69,10 @@ public enum Field {
                 build.getLogText().writeLogTo(0, byteArrayOutputStream);
                 return byteArrayOutputStream.toString();
             } catch (IOException e) {
-                // Probably won't happen, but don't silently swallow exceptions at least
-//                throw new RuntimeException(e.getMessage(), e);
                 return null;
             }
         }
     };
-
-//    CHANGE_LOG("changelog", Persist.TRUE) {
-//        @Override
-//        public Object getValue(Run<?, ?> run) {
-//            StringBuilder sb = new StringBuilder();
-//            if (run instanceof AbstractBuild) {
-//                //To add support for workflow this function needs to take a Run instead of AbstractBuild.
-//                // However I can't find the equivalent functions using the abstract form so will use instance of until I find a more permanent fix
-//
-//                AbstractBuild<?, ?> build = (AbstractBuild<?, ?>) run;
-//
-//                ChangeLogSet<? extends ChangeLogSet.Entry> changeSet = build.getChangeSet();
-//
-//                if (changeSet != null) {
-//                    for (ChangeLogSet.Entry entry : build.getChangeSet()) {
-//                        sb.append("author:").append(entry.getAuthor()).append('\n');
-//                        sb.append("commitid:").append(entry.getCommitId()).append('\n');
-//                        sb.append("message:").append(entry.getMsg()).append('\n');
-//                        for (String path : entry.getAffectedPaths()) {
-//                            sb.append(path).append('\n');
-//                        }
-//                    }
-//                }
-//            }
-//            return sb.toString();
-//        }
-//    },
-
-//    ARTIFACTS("artifacts", Persist.TRUE) {
-//        @Override
-//        public Object getValue(Run<?, ?> build) {
-//            Job<?, ?> p = build.getParent();
-//            //To add support for workflow this function needs to take a Run instead of AbstractBuild.
-//            // However I can't find the equivalent functions using the abstract form so will use instance of until I find a more permanent fix
-//
-//            if (p instanceof AbstractProject && build instanceof AbstractBuild<?, ?>) {
-//                AbstractProject<?, ?> proj = (AbstractProject<?, ?>) p;
-//                for (Publisher publisher : proj.getPublishersList()) {
-//                    if (publisher instanceof ArtifactIndexer) {
-//                        ArtifactIndexer ai = (ArtifactIndexer) publisher;
-//                        return ai.getIndexableData((AbstractBuild<?, ?>) build);
-//                    }
-//                }
-//
-//            }
-//            return "";
-//        }
-//    },
-
-//    URL("url", Persist.TRUE) {
-//        @Override
-//        public String getValue(Run<?, ?> build) {
-//            return build.getParent().getParent().getUrl() + build.getParent().getSearchUrl() + build.getSearchUrl();
-//        }
-//    };
 
     private static Map<String, Field> index;
     public final String fieldName;
