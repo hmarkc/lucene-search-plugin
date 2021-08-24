@@ -2,6 +2,7 @@ package org.jenkinsci.plugins.lucene.search;
 
 import hudson.Extension;
 import hudson.XmlFile;
+import hudson.model.FreeStyleProject;
 import hudson.model.Run;
 import hudson.model.Saveable;
 import hudson.model.listeners.SaveableListener;
@@ -17,17 +18,20 @@ import java.util.List;
 @Extension
 public class FreeTextSaveableListener extends SaveableListener {
 
+    Logger logger = Logger.getLogger(FreeTextSaveableListener.class);
+
     @Inject
     SearchBackendManager searchBackendManager;
 
     @Override
     public void onChange(Saveable o, XmlFile file) {
         if (o instanceof Run) {
+            Run run = (Run) o;
             try {
-                searchBackendManager.removeBuild((Run) o);
-                searchBackendManager.storeBuild((Run) o);
+                searchBackendManager.removeBuild(run);
+                searchBackendManager.storeBuild(run);
             } catch (IOException e) {
-                //
+                logger.error("update index failed: ", e);
             }
         }
     }

@@ -48,13 +48,11 @@ public class BurstExecutor<T> {
         @Override
         public void run() {
             try {
-                LOGGER.debug("Started thread " + getName());
                 while (!workQueue.isEmpty()) {
                     try {
                         T poll = workQueue.poll(1000, TimeUnit.MILLISECONDS);
 //                        T poll = workQueue.poll();
                         if (poll != null) {
-                            LOGGER.debug("Processing with thread " + getName());
                             worker.run(poll);
                         }
                     } catch (Exception e) {
@@ -62,7 +60,6 @@ public class BurstExecutor<T> {
                     }
                 }
             } finally {
-                LOGGER.debug("Quit thread " + getName());
                 removeThread(this);
             }
         }

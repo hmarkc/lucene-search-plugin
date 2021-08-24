@@ -44,7 +44,7 @@ function updateStatusFromResponse(statement) {
 			: "");
 	document.getElementById("currentProgress").style.display = ((statement.progress) ? ""
 			: "none");
-	document.getElementById("btnAbort").style.display = ((statement.progress) ? ""
+	document.getElementById("btnAbort").style.display = ((statement.running) ? ""
             : "none")
     document.getElementById("txtJob").style.display = ((statement.running) ? "none"
             : "")

@@ -15,6 +15,7 @@ import javax.inject.Inject;
 import jenkins.model.Jenkins;
 
 import org.apache.log4j.Logger;
+import org.apache.lucene.queryparser.classic.ParseException;
 import org.jenkinsci.plugins.lucene.search.FreeTextSearchItemImplementation;
 import org.jenkinsci.plugins.lucene.search.SearchResultImpl;
 import org.jenkinsci.plugins.lucene.search.bashrunner.BashRunner;
@@ -64,7 +65,6 @@ public class SearchBackendManager {
     }
 
     public SearchResult getSuggestedItems(String query) {
-        LOG.debug("LuceneSearchBackend getSuggested starts");
         SearchResultImpl result = new SearchResultImpl();
         for (FreeTextSearchItemImplementation item : getHits(query, false)) {
             result.add(new SuggestedItem(item));
@@ -77,13 +77,11 @@ public class SearchBackendManager {
         getBackend().cleanAllJob(progress);
     }
 
-    public void removeBuild(Run<?, ?> run) {
-        LOG.debug("removeBuild starts");
+    public void removeBuild(Run<?, ?> run) throws IOException {
         getBackend().removeBuild(run);
     }
 
-    public void deleteJob(String jobName) {
-        LOG.debug("deleteJob starts");
+    public void deleteJob(String jobName) throws IOException {
         getBackend().deleteJob(jobName);
     }
 
@@ -93,7 +91,6 @@ public class SearchBackendManager {
     }
 
     public void rebuildDatabase(ManagerProgress progress, int maxWorkers, Set<String> jobs, boolean overwrite) {
-        LOG.debug("rebuildDatabase started in searchbackend manager");
         try {
             getBackend().rebuildDatabase(progress, maxWorkers, jobs, overwrite);
         } catch (Exception e) {

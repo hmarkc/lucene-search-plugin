@@ -17,7 +17,6 @@ public class BashRunner implements Runnable {
 
     // run repeatedly then sleep for ... until stop() is called or interrupted
     public void run() {
-        logger.debug("run started");
         stop = false;
         script = new File(scriptName);
         try {
@@ -38,7 +37,6 @@ public class BashRunner implements Runnable {
     }
 
     private void runOnce() throws IOException {
-        logger.debug("runOnce started");
         Process process = Runtime.getRuntime().exec(String.format("bash %s", scriptName));
         BufferedReader br = new BufferedReader(new InputStreamReader(process.getInputStream()));
         String line;

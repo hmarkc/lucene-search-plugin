@@ -65,7 +65,7 @@ public class FreeTextSearch extends Search {
     public List<FreeTextSearchItem> getPage() {
         List<FreeTextSearchItem> page = pageMap.get(curr_page);
         if (page == null) {
-            page = new ArrayList<FreeTextSearchItem>(manager.getHits(query, true));
+            page = new ArrayList<>(manager.getHits(query, true));
             if (page.isEmpty()) {
                 max_page = curr_page;
             }

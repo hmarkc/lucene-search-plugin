@@ -101,7 +101,6 @@ public class LuceneSearchBackend extends SearchBackend<Document> {
 
     public static LuceneSearchBackend create(final Map<String, Object> config) {
         try {
-            LOGGER.debug("create starts");
             return new LuceneSearchBackend(getIndexPath(config));
         } catch (IOException e) {
             LOGGER.error("create lucene search backend failed: " + e);
@@ -153,44 +152,6 @@ public class LuceneSearchBackend extends SearchBackend<Document> {
         return fields;
     }
 
-    // This method returns paged build history
-    private List<FreeTextSearchItemImplementation> getBuildHistory(IndexSearcher searcher, Boolean searchNext) throws IOException {
-        List<FreeTextSearchItemImplementation> luceneSearchResultImpl = new ArrayList<>();
-        Query query = new MatchAllDocsQuery();
-        RunList<Run> runList = new RunList<>(Jenkins.getInstance().getAllItems(Job.class));
-        ScoreDoc[] hits;
-        if (searchNext) {
-            hits = searcher.searchAfter(lastDoc, query, MAX_HITS_PER_PAGE).scoreDocs;
-        } else {
-            hits = searcher.searchAfter(null, query, MAX_HITS_PER_PAGE).scoreDocs;
-        }
-        if (hits.length != 0) {
-            lastDoc = hits[hits.length - 1];
-        }
-        TreeMultimap<Float, Document> docs = TreeMultimap.create(FLOAT_COMPARATOR, START_TIME_COMPARATOR);
-
-        for (ScoreDoc hit : hits) {
-            Document doc = searcher.doc(hit.doc);
-            docs.put(hit.score, doc);
-        }
-        for (Document doc : docs.values()) {
-            String projectName = doc.get(PROJECT_NAME.fieldName);
-            String buildNumber = doc.get(BUILD_NUMBER.fieldName);
-            String searchName = doc.get(BUILD_DISPLAY_NAME.fieldName);
-            String startTime = doc.get(START_TIME.fieldName);
-
-            String url = "/job/" + projectName + "/" + buildNumber + "/";
-            luceneSearchResultImpl.add(new FreeTextSearchItemImplementation(
-                    projectName + " " + searchName + " " + startTime,
-                    projectName,
-                    EMPTY_ARRAY,
-                    url,
-                    false));
-        }
-        searcher.getIndexReader().close();
-        return luceneSearchResultImpl;
-    }
-
     private Pair<Query, Query, Boolean> parseQuery(String q, IndexSearcher searcher) throws ParseException, IOException {
 
         List<String> words = new ArrayList<>(Arrays.asList(q.trim().split("\\s+", 2)));
@@ -200,13 +161,8 @@ public class LuceneSearchBackend extends SearchBackend<Document> {
         Query query = parser.parse(q);
         Query highlight = query;
 
-        for (String word : words) {
-            LOGGER.debug("word is " + word);
-        }
-
-        if (words.size() >= 2) {
+        if (words.size() >= 2 && !words.get(0).contains(":")) {
             Query jobNameQuery = parser.parse(PROJECT_NAME.fieldName + ":" + words.get(0));
-            LOGGER.debug("The job exists:" + (searcher.search(jobNameQuery, 1).scoreDocs.length));
             if (searcher.search(jobNameQuery, 1).scoreDocs.length > 0) {
                 highlight = parser.parse(words.get(1));
                 query = new BooleanQuery.Builder()
@@ -215,7 +171,6 @@ public class LuceneSearchBackend extends SearchBackend<Document> {
                         .build();
             }
         }
-        LOGGER.debug("The number of clauses are " + calculateQueryFieldsRecursively(highlight));
         Set<String> fields = calculateQueryFieldsRecursively(highlight);
         return new Pair<>(query.rewrite(searcher.getIndexReader()),
                 highlight.rewrite(searcher.getIndexReader()),
@@ -229,16 +184,12 @@ public class LuceneSearchBackend extends SearchBackend<Document> {
         try {
             IndexReader reader = DirectoryReader.open(index);
             IndexSearcher searcher = new IndexSearcher(reader);
-            if (q.isEmpty()) {
-                return getBuildHistory(searcher, searchNext);
-            }
             Pair<Query, Query, Boolean> fieldQueryPair = parseQuery(q, searcher);
             Query query = fieldQueryPair.first;
             Query highlight = fieldQueryPair.second;
             Boolean isShowConsole = fieldQueryPair.third;
 
             QueryTermScorer scorer = new QueryTermScorer(highlight);
-            LOGGER.debug("highlight is " + highlight);
             Highlighter highlighter = new Highlighter(new SimpleHTMLFormatter(), scorer);
             ScoreDoc[] hits;
             if (searchNext) {
@@ -318,7 +269,7 @@ public class LuceneSearchBackend extends SearchBackend<Document> {
                 org.apache.lucene.document.Field.Store store = field.persist ? STORE : DONT_STORE;
                 Object fieldValue = field.getValue(run);
                 if (fieldValue != null) {
-                    LOGGER.debug("The field is " + fieldValue);
+
                     switch (FIELD_TYPE_MAP.get(field)) {
                         case LONG:
                             doc.add(new LongField(field.fieldName, ((Number) fieldValue).longValue(), store));
@@ -349,11 +300,7 @@ public class LuceneSearchBackend extends SearchBackend<Document> {
             }
             dbWriter.addDocument(doc);
         } finally {
-            try {
-                dbWriter.commit();
-            } catch (Exception e) {
-                LOGGER.error("updateReader: " + e);
-            }
+            dbWriter.commit();
         }
     }
 
@@ -384,21 +331,17 @@ public class LuceneSearchBackend extends SearchBackend<Document> {
     }
 
     @Override
-    public void removeBuild(Run<?, ?> run) {
+    public void removeBuild(Run<?, ?> run) throws IOException {
         try {
-            LOGGER.debug("The current run id is " + run.getId());
             dbWriter.deleteDocuments(getRunQuery(run));
             dbWriter.commit();
-        } catch (IOException e) {
-            LOGGER.warn("removeBuild: " + e);
         } catch (ParseException e) {
             LOGGER.warn("removeBuild: " + e);
         }
     }
 
     @Override
-    public void deleteJob(String jobName) {
-        LOGGER.error("Job deletion started for: " + jobName);
+    public void deleteJob(String jobName) throws IOException {
         try {
             Query query = getQueryParser().parse(PROJECT_NAME.fieldName + ":" + jobName);
             dbWriter.deleteDocuments(query);

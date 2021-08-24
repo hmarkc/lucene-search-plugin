@@ -47,7 +47,6 @@ public class LuceneManager extends ManagementLink {
 
     @JavaScriptMethod
     public JSReturnCollection rebuildDatabase(int workers, String jobNames, String overwrite) {
-        LOGGER.debug("rebuildDatabase started in manager, overwrite value is: " + overwrite);
         JSReturnCollection statement = verifyNotInProgress();
         this.workers = workers;
         if (this.workers <= 0) {

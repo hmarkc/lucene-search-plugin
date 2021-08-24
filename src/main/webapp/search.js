@@ -18,8 +18,8 @@ function toMiddle() {
     window.scrollTo(0, document.body.scrollHeight / 2);
 }
 
-function load(hits, ) {
-    var numResults = (hits.length == 100) ? "100+" : hits.length;
+function load(hits) {
+    var numResults = (hits.length >= 100) ? hits.length + "+" : hits.length;
     document.getElementById("numberOfResults").innerHTML = "The number of results: " + numResults;
 
     const results = document.getElementById("results");

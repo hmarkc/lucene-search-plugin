@@ -12,6 +12,7 @@ import java.util.Set;
 import jenkins.model.Jenkins;
 
 import org.apache.log4j.Logger;
+import org.apache.lucene.queryparser.classic.ParseException;
 import org.jenkinsci.plugins.lucene.search.Field;
 import org.jenkinsci.plugins.lucene.search.FreeTextSearchExtension;
 import org.jenkinsci.plugins.lucene.search.FreeTextSearchItemImplementation;
@@ -60,12 +61,12 @@ public abstract class SearchBackend<T> {
 
     public abstract SearchBackend<?> reconfigure(Map<String, Object> config);
 
-    public abstract void removeBuild(Run<?, ?> run);
+    public abstract void removeBuild(Run<?, ?> run) throws IOException;
 
-    public abstract void deleteJob(String jobName);
+    public abstract void deleteJob(String jobName) throws IOException;
 
     @SuppressWarnings("rawtypes")
-    public void rebuildJob(Progress progress, Job<?, ?> job, int maxWorkers, boolean overwrite) {
+    public void rebuildJob(Progress progress, Job<?, ?> job, int maxWorkers, boolean overwrite) throws IOException {
         BurstExecutor<Run> burstExecutor = BurstExecutor.create(new RebuildBuildWorker(progress, overwrite), maxWorkers)
                .andStart();
         if (overwrite) {
@@ -101,7 +102,6 @@ public abstract class SearchBackend<T> {
 
     @SuppressWarnings("rawtypes")
     public void rebuildDatabase(ManagerProgress progress, int maxWorkers, Set<String> jobNames, boolean overwrite) {
-        LOGGER.debug("rebuild database started in search backend");
         List<Job> allItems = Jenkins.getInstance().getAllItems(Job.class);
         try {
             if (!jobNames.isEmpty()) {
