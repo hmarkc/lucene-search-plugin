@@ -161,20 +161,25 @@ public class LuceneSearchBackend extends SearchBackend<Document> {
         Query query = parser.parse(q);
         Query highlight = query;
 
-        if (words.size() >= 2 && !words.get(0).contains(":")) {
-            Query jobNameQuery = parser.parse(PROJECT_NAME.fieldName + ":" + words.get(0));
-            if (searcher.search(jobNameQuery, 1).scoreDocs.length > 0) {
-                highlight = parser.parse(words.get(1));
-                query = new BooleanQuery.Builder()
-                        .add(jobNameQuery, BooleanClause.Occur.MUST)
-                        .add(highlight, BooleanClause.Occur.MUST)
-                        .build();
+        if (words.size() >= 2) {
+            try {
+                Query jobNameQuery = parser.parse(PROJECT_NAME.fieldName + ":" + words.get(0));
+                if (searcher.search(jobNameQuery, 1).scoreDocs.length > 0) {
+                    highlight = parser.parse(words.get(1));
+                    query = new BooleanQuery.Builder()
+                            .add(jobNameQuery, BooleanClause.Occur.MUST)
+                            .add(highlight, BooleanClause.Occur.MUST)
+                            .build();
+                }
+            } catch (ParseException e) {
+                // proceed with multi-job search
             }
         }
+
         Set<String> fields = calculateQueryFieldsRecursively(highlight);
         return new Pair<>(query.rewrite(searcher.getIndexReader()),
                 highlight.rewrite(searcher.getIndexReader()),
-                fields.size() != 1 || !fields.contains(BUILD_DISPLAY_NAME.fieldName));
+                fields.contains(CONSOLE.fieldName));
     }
 
 
@@ -191,6 +196,7 @@ public class LuceneSearchBackend extends SearchBackend<Document> {
 
             QueryTermScorer scorer = new QueryTermScorer(highlight);
             Highlighter highlighter = new Highlighter(new SimpleHTMLFormatter(), scorer);
+            highlighter.setMaxDocCharsToAnalyze(Integer.MAX_VALUE);
             ScoreDoc[] hits;
             if (searchNext) {
                 hits = searcher.searchAfter(lastDoc, query, MAX_HITS_PER_PAGE).scoreDocs;
@@ -213,7 +219,7 @@ public class LuceneSearchBackend extends SearchBackend<Document> {
                     bestFragments = highlighter.getBestFragments(analyzer, CONSOLE.fieldName,
                             doc.get(CONSOLE.fieldName), MAX_NUM_FRAGMENTS);
                 } catch (InvalidTokenOffsetsException e) {
-                    LOGGER.warn("Failed to find bestFragments", e);
+                    LOGGER.debug("Failed to find bestFragments", e);
                 }
 
                 String projectName = doc.get(PROJECT_NAME.fieldName);
